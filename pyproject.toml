@@ -7,14 +7,27 @@ requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28.1",
     "pandas>=2.3.2",
+    "psycopg[binary]>=3.3.9",
     "psycopg2-binary>=2.9.10",
     "requests>=2.32.3",
     "rich>=14.2.0",
     "sqlalchemy>=2.0.40",
-    "streamlit>=1.44.1",
+    "streamlit[auth]>=1.67.0",
     "streamlit-code-editor>=0.1.22",
     "watchdog>=6.0.0",
 ]
 
 [dependency-groups]
-dev = []
+dev = ["pytest>=8", "ruff>=0.17.5", "ty"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = ["postgres: requires a disposable PostgreSQL database via KODERPAD_TEST_DATABASE_URL"]
+
+[tool.ty.environment]
+extra-paths = ["src"]
+
+[tool.ruff.lint.per-file-ignores]
+# This exercise deliberately demonstrates mutable default arguments.
+"src/languages/python/exercises/ex03.py" = ["B006"]

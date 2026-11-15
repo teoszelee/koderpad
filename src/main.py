@@ -1,38 +1,41 @@
 import streamlit as st
 
+from auth import require_sign_in
+
 st.set_page_config(
     page_title="Koderpad",
-    page_icon=":memo:",
+    page_icon=":material/code:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-if "app_password" not in st.session_state:
-    st.session_state["app_password"] = ""
+with st.sidebar:
+    st.title("Koderpad")
 
+require_sign_in()
 
-def main():
-    import utils
-    from languages.docker import executor as dockerfile_executor
-    from languages.python import executor as python_executor
-    from languages.sql import executor as sql_executor
-
-    executor_mapping = {
-        "Python": python_executor,
-        "SQL": sql_executor,
-        "Dockerfile": dockerfile_executor,
-    }
-
-    with st.sidebar:
-        st.title("Koderpad")
-
-        if not utils.check_password():
-            st.stop()
-
-        language = st.selectbox("Select language", executor_mapping.keys())
-
-    executor_mapping[language].run()
-
-
-if __name__ == "__main__":
-    main()
+page = st.navigation(
+    [
+        st.Page(
+            "app_pages/python.py",
+            title="Python",
+            icon=":material/code:",
+            default=True,
+            help="Edit and run Python exercises. Inspect printed output and errors.",
+        ),
+        st.Page(
+            "app_pages/sql.py",
+            title="SQL",
+            icon=":material/database:",
+            help="Run PostgreSQL exercises and browse tables. Each Run resets public.",
+        ),
+        st.Page(
+            "app_pages/dockerfile.py",
+            title="Dockerfile",
+            icon=":material/deployed_code:",
+            help="Load and edit Dockerfile examples without building containers.",
+        ),
+    ],
+    position="top",
+)
+page.run()

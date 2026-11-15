@@ -1,33 +1,5 @@
 from pathlib import Path
 
-import streamlit as st
-
-
-def _password_entered():
-    if st.session_state["app_password"] == st.secrets["APP_PWD"]:
-        st.session_state["password_correct"] = True
-        del st.session_state["app_password"]
-    else:
-        st.session_state["password_correct"] = False
-
-
-def check_password():
-    if st.secrets.get("APP_PWD") is None:
-        return True  # No password set
-
-    if "password_correct" not in st.session_state:
-        st.text_input(
-            "Password", type="password", on_change=_password_entered, key="app_password"
-        )
-        return False
-    elif not st.session_state["password_correct"]:
-        st.text_input(
-            "Password", type="password", on_change=_password_entered, key="app_password"
-        )
-        st.error("😕 Password incorrect")
-        return False
-    return True
-
 
 def get_files(dir_path: Path, file_ext: str) -> list[str]:
     if not dir_path.is_dir():

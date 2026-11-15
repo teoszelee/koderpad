@@ -7,6 +7,7 @@ References
 """
 
 DOCKERFILE_EDITOR_SETTINGS = {
+    "lang": "dockerfile",
     "height": 24,
     "theme": "default",
     "focus": True,
