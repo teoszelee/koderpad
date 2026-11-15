@@ -4,10 +4,7 @@ import traceback
 from io import StringIO
 from pathlib import Path
 
-import streamlit as st
-from code_editor import code_editor
-
-from utils import get_files
+from editor import ExecutionResult, render_editor, show_output
 
 from .settings import PYTHON_EDITOR_SETTINGS
 
@@ -44,45 +41,36 @@ def basic_safety_check(src: str) -> tuple[bool, str]:
                 for alias in node.names
             ):
                 return False, "Blocked: forbidden import used."
-        elif isinstance(node, ast.ImportFrom):
-            if (node.module or "").split(".")[0] in DISALLOWED_PYTHON_PACKAGES:
-                return False, "Blocked: forbidden import used."
+        elif (
+            isinstance(node, ast.ImportFrom)
+            and (node.module or "").split(".")[0] in DISALLOWED_PYTHON_PACKAGES
+        ):
+            return False, "Blocked: forbidden import used."
     return True, ""
 
 
-def execute_script(script: str):
+def execute_script(script: str) -> ExecutionResult:
     ok, msg = basic_safety_check(script)
-
     if not ok:
-        st.error(msg)
-        return
+        return ExecutionResult(error=msg)
 
     output_buffer = StringIO()
-
+    result = ExecutionResult()
     with contextlib.redirect_stdout(output_buffer):
         try:
             namespace = {}
-            exec(script, namespace)
-        except Exception as e:
-            st.error(f"Error: {e}")
-            error_trace = traceback.format_exc()
-            st.code(error_trace)
+            exec(script, namespace)  # noqa: S102 - intentional playground execution
+        except Exception as error:  # noqa: BLE001 - report arbitrary user-code errors
+            result.error = f"Error: {error}"
+            result.traceback = traceback.format_exc()
+    result.text = output_buffer.getvalue()
+    return result
 
-    st.code(output_buffer.getvalue(), language="text", wrap_lines=True)
 
-
-def run():
-    with st.sidebar:
-        ex_files = get_files(EXERCISE_DIR, PYTHON_FILE_EXT)
-        selected_exercise = st.selectbox(
-            label="Load an exercise",
-            options=ex_files,
-            format_func=lambda x: x.replace(PYTHON_FILE_EXT, "").title(),
-            key="python_exercise",
-        )
-
-    ex_text = (EXERCISE_DIR / selected_exercise).read_text()
-    response_dict = code_editor(lang="python", code=ex_text, **PYTHON_EDITOR_SETTINGS)
-    if response_dict["text"]:
-        st.subheader("Output")
-        execute_script(response_dict["text"])
+def run() -> None:
+    workspace, script = render_editor(
+        "python", EXERCISE_DIR, PYTHON_FILE_EXT, PYTHON_EDITOR_SETTINGS
+    )
+    if script is not None:
+        workspace.output = execute_script(script)
+    show_output(workspace.output)

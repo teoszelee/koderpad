@@ -1,8 +1,10 @@
-.PHONY: dev run test check clean db
+.PHONY: help init dev test check format update-hooks clean db
 .DEFAULT: help
 -include .env
 
 PYTHON=python3.11
+# Existing data directories must use their original Postgres major version.
+POSTGRES_VERSION ?= $(shell cat db/PG_VERSION 2>/dev/null || echo 16)
 
 help: ## Display this help message
 	@echo "Please use \`make <target>\` where <target> is one of"
@@ -18,14 +20,27 @@ init: ## Initialize the virtual environment and install dependencies
 	uv sync
 	uv tool run pre-commit install
 
-check: ## Run code checks with Ruff
+check: ## Run lint, format, type, and regression checks without rewriting files
+	uv run --locked ruff check src tests
+	uv run --locked ruff format --check src tests
+	uv run --locked ty check src tests
+	uv run --locked pytest
+
+format: ## Apply Ruff import sorting, lint fixes, and formatting
+	uv run --locked ruff check --select I --fix src tests
+	uv run --locked ruff check --fix src tests
+	uv run --locked ruff format src tests
+
+update-hooks: ## Update pre-commit hook versions
 	uv tool run pre-commit autoupdate
-	uv tool run pre-commit run --all-files
+
+test: ## Run regression tests (Postgres integration requires a disposable database)
+	uv run --locked pytest
 
 dev: ## Run the app
 	uv run streamlit run src/main.py
 
-db: ## Run a Postgres database with env vars that matches the DB_URL_LOCAL env var
+db: ## Run the local Postgres database, preserving its existing major version
 	docker run -d --rm \
 	-p 5432:5432 \
 	--name koderpad-db  \
@@ -34,4 +49,4 @@ db: ## Run a Postgres database with env vars that matches the DB_URL_LOCAL env v
 	-e POSTGRES_PASSWORD=postgres \
 	-e POSTGRES_DB=postgres \
 	-e TZ=UTC \
-	postgres:14
+	postgres:$(POSTGRES_VERSION)
